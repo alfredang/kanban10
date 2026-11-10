@@ -1,5 +1,7 @@
 # kanban10
 
+**Live demo:** https://alfredang.github.io/kanban10/
+
 A single-file IT project management Kanban board for a **fictitious** bank's internal IT PMO, built for demos and training. It is plain HTML, CSS and JavaScript in one `index.html`, with no frameworks, build step or external resources.
 
 ![IT PMO Kanban board with a summary strip, filter bar and four columns (Backlog, In Progress, Blocked, Done) holding eight sample IT tasks, two flagged Overdue](docs/screenshot.png)
