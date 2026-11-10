@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Security & constraint checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Project constraints (CLAUDE.md hard rules)
+        shell: bash
+        run: |
+          fail=0
+          check() {  # check "<description>" "<regex>"
+            if grep -nEi "$2" index.html; then
+              echo "::error file=index.html::$1"
+              fail=1
+            fi
+          }
+          check "External script/stylesheet/@import (no CDNs or web fonts)" '<script[^>]+src=|<link[^>]+href=["'"'"']?https?:|@import'
+          check "Browser storage is not allowed (no persistence)"          'localStorage|sessionStorage|indexedDB|document\.cookie'
+          check "Browser dialogs are not allowed"                          '\balert\(|\bconfirm\('
+          check "!important is not allowed"                                '!important'
+          others=$(grep -oEi 'https?://[^"'"'"' )<>]+' index.html | grep -viE '^https?://formsubmit\.co(/|$)' || true)
+          if [ -n "$others" ]; then
+            echo "$others"
+            echo "::error file=index.html::Only formsubmit.co may be referenced"
+            fail=1
+          fi
+          exit $fail
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate HTML (html-validate, run via npx; no repo dependencies)
+        run: npx --yes html-validate@8 index.html
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage site files (only what the page needs)
+        run: |
+          mkdir _site
+          cp index.html _site/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

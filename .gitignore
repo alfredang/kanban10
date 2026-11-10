@@ -8,3 +8,7 @@
 id_rsa*
 .playwright-mcp/
 .claude/settings.local.json
+*.log
+node_modules/
+.DS_Store
+Thumbs.db
