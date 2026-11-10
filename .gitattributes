@@ -1,0 +1,4 @@
+# CSP hashes in v2/index.html are computed over exact bytes: keep LF everywhere.
+*.html text eol=lf
+*.mjs  text eol=lf
+*.yml  text eol=lf

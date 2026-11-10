@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A single-file IT PMO Kanban board demo (`index.html`) for a fictitious bank's internal training. Everything — markup, `<style>`, `<script>` — lives in that one file.
 
+`v2/index.html` is a separate single-file retro (1960s) redesign with tabs (Board / Projects / Timeline / Assignees), deployed at `/v2/`. Same hard constraints and architecture; do not overwrite v1 when changing v2. v2 has a strict hash-based CSP: after editing its `<script>` or `<style>`, run `node tools/csp.mjs v2/index.html --write` (CI fails on stale hashes). Never add inline `style=""` or event-handler attributes there; set dynamic sizes through `data-vars` + `applyVars()` (CSSOM).
+
 ## Running
 
 No build, no package manager, no tests. Open the file directly (file:// must keep working):

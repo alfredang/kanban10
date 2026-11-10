@@ -28,30 +28,35 @@ jobs:
         shell: bash
         run: |
           fail=0
-          check() {  # check "<description>" "<regex>"
-            if grep -nEi "$2" index.html; then
-              echo "::error file=index.html::$1"
+          for f in index.html v2/index.html; do
+            check() {  # check "<description>" "<regex>"
+              if grep -nEi "$2" "$f"; then
+                echo "::error file=$f::$1"
+                fail=1
+              fi
+            }
+            check "External script/stylesheet/@import (no CDNs or web fonts)" '<script[^>]+src=|<link[^>]+href=["'"'"']?https?:|@import'
+            check "Browser storage is not allowed (no persistence)"          'localStorage|sessionStorage|indexedDB|document\.cookie'
+            check "Browser dialogs are not allowed"                          '\balert\(|\bconfirm\('
+            check "!important is not allowed"                                '!important'
+            others=$(grep -oEi 'https?://[^"'"'"' )<>;]+' "$f" | grep -viE '^https?://formsubmit\.co(/|$)' || true)
+            if [ -n "$others" ]; then
+              echo "$others"
+              echo "::error file=$f::Only formsubmit.co may be referenced"
               fail=1
             fi
-          }
-          check "External script/stylesheet/@import (no CDNs or web fonts)" '<script[^>]+src=|<link[^>]+href=["'"'"']?https?:|@import'
-          check "Browser storage is not allowed (no persistence)"          'localStorage|sessionStorage|indexedDB|document\.cookie'
-          check "Browser dialogs are not allowed"                          '\balert\(|\bconfirm\('
-          check "!important is not allowed"                                '!important'
-          others=$(grep -oEi 'https?://[^"'"'"' )<>]+' index.html | grep -viE '^https?://formsubmit\.co(/|$)' || true)
-          if [ -n "$others" ]; then
-            echo "$others"
-            echo "::error file=index.html::Only formsubmit.co may be referenced"
-            fail=1
-          fi
+          done
           exit $fail
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      - name: v2 hardening (CSP hashes match inline script/style, no unsafe-inline)
+        run: node tools/csp.mjs v2/index.html
+
       - name: Validate HTML (html-validate, run via npx; no repo dependencies)
-        run: npx --yes html-validate@8 index.html
+        run: npx --yes html-validate@8 index.html v2/index.html
 
   deploy:
     name: Deploy to GitHub Pages
@@ -73,8 +78,9 @@ jobs:
 
       - name: Stage site files (only what the page needs)
         run: |
-          mkdir _site
-          cp index.html _site/
+          mkdir -p _site/v2
+          cp index.html _site/              # original board stays at the site root
+          cp v2/index.html _site/v2/        # retro redesign lives at /v2/
 
       - uses: actions/configure-pages@v5
 

@@ -4,11 +4,27 @@ A single-file IT project management Kanban board for a **fictitious** bank's int
 
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white) ![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white) ![JavaScript](https://img.shields.io/badge/JavaScript-vanilla-F7DF1E?logo=javascript&logoColor=black) ![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-222222?logo=githubpages&logoColor=white) [![CI](https://github.com/alfredang/kanban10/actions/workflows/ci.yml/badge.svg)](https://github.com/alfredang/kanban10/actions/workflows/ci.yml) [![Pages](https://img.shields.io/github/deployments/alfredang/kanban10/github-pages?label=pages&logo=github)](https://github.com/alfredang/kanban10/deployments/github-pages)
 
-**Live demo:** https://alfredang.github.io/kanban10/
+**Live demo:** https://alfredang.github.io/kanban10/ (classic v1)  
+**Retro v2:** https://alfredang.github.io/kanban10/v2/ (1960s space-age redesign, with tabs and hardening)
 
 ![IT PMO Kanban board with a summary strip, filter bar and four columns (Backlog, In Progress, Blocked, Done) holding eight sample IT tasks, two flagged Overdue](docs/screenshot.png)
 
 > **Demo data only.** The eight seeded tasks, people and projects are made up. Board state lives in memory only; refreshing the page resets it to the sample data. Nothing is stored in localStorage, cookies or any other storage API.
+
+## v2: retro redesign ([`v2/index.html`](v2/index.html))
+
+![v2 retro board: teal sunburst header, round summary dials, tab bar (Board, Projects, Timeline, Assignees) and four rounded columns of cream task cards](docs/screenshot-v2.png)
+
+A second single-file page with the same rules and data model as v1, deployed next to it at `/v2/`. v1 is unchanged.
+
+- **Four tabs** (WAI-ARIA tabs with arrow keys and `#board`/`#projects`/`#timeline`/`#people` deep links): the Kanban **Board**; **Projects**, with animated donut dials of the status mix; a **Timeline** of due dates per project with a today line and a T-minus countdown; and **Assignees**, with workload bars per person. The other views link back to the board (filtered, or straight to a card).
+- **1960s look:** mustard, teal, orange and avocado on cream, a rotating sunburst, an atom logo, hard offset shadows and bouncy motion. It uses system fonts only, and all motion is off under `prefers-reduced-motion`.
+- **Hardening:**
+  - **Content Security Policy:** a strict policy with `default-src 'none'`. The inline script and style are allowed only by SHA-256 hash, and `connect-src` allows only formsubmit.co. Dynamic sizes are set through CSSOM, never inline `style`. Run `node tools/csp.mjs v2/index.html --write` after editing the script or style; CI fails if the hashes are stale.
+  - **Page settings:** `no-referrer`, `noindex`, and a frame guard against clickjacking.
+  - **Input handling:** control and bidi-override characters are stripped. Projects, categories, priorities, statuses and URL hashes are checked against allow-lists, and due dates must be real dates within 5 years. The form has a honeypot field.
+  - **FormSubmit requests:** each call is rate-limited (5 per 10 minutes) and times out after 10 s. It sends no credentials and refuses redirects.
+  - **Board limits:** at most 200 tasks. Toasts are built with `textContent`.
 
 ## Features
 
@@ -104,9 +120,10 @@ A single workflow, [`.github/workflows/ci.yml`](.github/workflows/ci.yml), runs 
 
 - **`check`** (every push and PR):
   - Secret scan of the full history with [gitleaks](https://github.com/gitleaks/gitleaks-action).
-  - Constraint checks with `grep` on `index.html`. These fail the job on external scripts, stylesheets or `@import`; on `localStorage`/`sessionStorage`/`indexedDB`/`document.cookie`; on `alert(`/`confirm(`; on `!important`; and on any URL host other than `formsubmit.co`.
-  - HTML validation with `npx html-validate@8`, run on the fly, so the repo stays dependency-free. [`.htmlvalidate.json`](.htmlvalidate.json) turns off two rules that conflict with deliberate choices: `wcag/h32` (the filter form filters live, so it has no submit button) and `aria-label-misuse` (the summary `<dl>` is labelled for screen readers).
-- **`deploy`** (pushes to `main` only, after `check` passes): stages just `index.html` and publishes it to GitHub Pages.
+  - Constraint checks with `grep` on `index.html` and `v2/index.html`. These fail the job on external scripts, stylesheets or `@import`; on `localStorage`/`sessionStorage`/`indexedDB`/`document.cookie`; on `alert(`/`confirm(`; on `!important`; and on any URL host other than `formsubmit.co`.
+  - CSP hash check for v2 (`node tools/csp.mjs v2/index.html`).
+  - HTML validation of both pages with `npx html-validate@8`, run on the fly, so the repo stays dependency-free. [`.htmlvalidate.json`](.htmlvalidate.json) turns off two rules that conflict with deliberate choices: `wcag/h32` (the filter form filters live, so it has no submit button) and `aria-label-misuse` (the summary `<dl>` is labelled for screen readers).
+- **`deploy`** (pushes to `main` only, after `check` passes): stages `index.html` (site root) and `v2/index.html` (`/v2/`) and publishes them to GitHub Pages.
 
 ## Security & privacy
 
